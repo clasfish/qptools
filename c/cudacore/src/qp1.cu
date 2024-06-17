@@ -21,17 +21,22 @@ class cuda_qp1{
 
 
 
-qp1::qp1(const matrix* P, const matrix* q, const matrix* lb, const matrix* rb, const matrix* G, const matrix* h):
+qp1::qp1(const cublasHandle_t& handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const matrix* h):
+    handle(handle),
     n(P->nrows), lbdim(lb?n:0), rbdim(rb?n:0),
     bdim(lbdim+rbdim), gdim(G?G->nrows:0),
-    cdim(rbdim+gdim),
+    cdim(bdim+gdim),
     P(P), q(q), lb(lb), rb(rb), G(G), h(h),
-    L(new matrix(n, n)),
-    d(new matrix(cdim, 1)),
-    dsq(new matrix(cdim, 1)),
-    Gd(new matrix(gdim, n)){}
+    L(new cumatrix(n, n)),
+    d(new cumatrix(cdim, 1)),
+    dsq(new cumatrix(cdim, 1)),
+    Gd(new cumatrix(gdim, n)){}
 
-void qp1::fG(char trans, const matrix* x, matrix* y) const{
+cumatrix* qp1::solve(){
+    return nullptr;
+}
+/*
+void qp1::fG(char trans, const cumatrix* x, cumatrix* y) const{
     const int int1=1;
     const double dblm=-1.0, dbl1=1.0;
     if(trans == 'N'){
@@ -44,7 +49,8 @@ void qp1::fG(char trans, const matrix* x, matrix* y) const{
         if(gdim) dgemv_("T", &gdim, &n, &dbl1, G->begin, &gdim, x->begin+bdim, &int1, &dbl1, y->begin, &int1);
     }
 }
-
+*/
+/*
 void qp1::kktfactor(){
     int i, j, info, n1=n+1;
     const double dbl1=1.0;
@@ -81,7 +87,8 @@ void qp1::kktfactor(){
     if(gdim) dsyrk_("L", "T", &n, &gdim, &dbl1, Gd->begin, &gdim, &dbl1, L->begin, &n);
     dpotrf_("L", &n, L->begin, &n, &info);
 }
-
+*/
+/*
 void qp1::kktsolver(matrix* x, matrix* z, matrix* u) const{
     const int int1=1;   
     z->divide(d->begin);
