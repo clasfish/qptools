@@ -5,7 +5,9 @@ def matrix(A):
     if isinstance(A, core.matrix):
         return A
     elif isinstance(A, np.ndarray):
-        if A.ndim in {1, 2}:
+        if A.ndim == 0:
+            return core.matrix_fromBuffer(A.reshape(-1))
+        elif A.ndim in {1, 2}:
             if A.dtype != np.double: A = A.asdtype(np.double)
             return core.matrix_fromBuffer(A)
         else:
