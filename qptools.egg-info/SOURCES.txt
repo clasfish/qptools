@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+c/core/src/core_bind.cpp
+c/core/src/matrix_base.cpp
+c/core/src/qp1.cpp
+c/core/src/qp2.cpp
+python/__init__.py
+qptools.egg-info/PKG-INFO
+qptools.egg-info/SOURCES.txt
+qptools.egg-info/dependency_links.txt
+qptools.egg-info/top_level.txt
+test/test.py

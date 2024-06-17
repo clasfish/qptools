@@ -40,7 +40,7 @@ def qp1(P, q=None, lb=None, rb=None, G=None, h=None):
             raise ValueError(f"rb should be an array of size {n}")
     solver = core.qp1(P=P, q=q, lb=lb, rb=rb, G=G, h=h)
     x = solver.solve()
-    return np.array(x)
+    return np.array(x).squeeze()
 
 def qp2(P, q=None, lb=None, rb=None, G=None, h=None):
     P = matrix(P)
@@ -69,4 +69,4 @@ def qp2(P, q=None, lb=None, rb=None, G=None, h=None):
             raise ValueError(f"rb should be an array of size {n}")
     solver = core.qp2(P=P, q=q, lb=lb, rb=rb, G=G, h=h)
     x = solver.solve()
-    return np.array(x)
+    return np.array(x).squeeze()

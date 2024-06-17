@@ -1,12 +1,13 @@
-#include "matrix_qp.h"
 #include "matrix_blas.h"
+#include "qp.h"
 #include <cmath>
 #include <iostream>
+
 
 qp1::qp1(const matrix* P, const matrix* q, const matrix* lb, const matrix* rb, const matrix* G, const matrix* h):
     n(P->nrows), lbdim(lb?n:0), rbdim(rb?n:0),
     bdim(lbdim+rbdim), gdim(G?G->nrows:0),
-    cdim(rbdim+gdim),
+    cdim(bdim+gdim),
     P(P), q(q), lb(lb), rb(rb), G(G), h(h),
     L(new matrix(n, n)),
     d(new matrix(cdim, 1)),

@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: qptools
+Version: 1.0.1
+Summary: quadratic optimization tools
+Home-page: https://gitee.com/clawfish/qptools
+Author: clawfish
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Education
+Requires-Python: >=3.8
+License-File: LICENSE

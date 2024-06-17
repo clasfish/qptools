@@ -1,5 +1,5 @@
-#include "matrix_qp.h"
 #include "matrix_blas.h"
+#include "qp.h"
 #include <cmath>
 #include <iostream>
 

@@ -1,8 +1,8 @@
 #include <pybind11/pybind11.h>
-#include "matrix_base.h"
-#include "matrix_qp.h"
 #include <iostream>
 #include <string>
+#include "matrix_base.h"
+#include "qp.h"
 namespace py = pybind11;
 
 
@@ -61,6 +61,7 @@ PYBIND11_MODULE(core, m){
         .def_readonly("ncols", &matrix::ncols)
         .def_readonly("size", &matrix::size)
         .def("display", &matrix::display)
+        .def("_display", &matrix::_display, py::arg("len"))
         .def("__repr__", &matrix_repr)
         .def_buffer(&matrix_toBuffer);
 

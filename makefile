@@ -27,8 +27,12 @@ check:
 	echo $(PYTHON_SUFFIX)
 	
 clean:
-	rm -rf build/*
+	# build
 	rm -rf qptools.egg-info
 	rm -rf dist
+	rm -f build/*
+	# test
 	rm -f test/*.o
-	rm -f main
+	rm -f c/core/test/*.o c/core/test/test
+	# so
+	rm *.so
