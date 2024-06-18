@@ -1,5 +1,4 @@
 #include <iostream>
-#include <iomanip>
 #include <algorithm>
 #include <numeric>
 #include "matrix_base.h"
@@ -30,8 +29,8 @@ void matrix::display() const{
 void matrix::_display(int len) const{
     int i;
     double *iter=begin;
-    for(i=0; i<len-1; i++, iter++) std::cout << std::setprecision(9) << *iter << " ";
-    std::cout << std::setprecision(9) << *iter << std::endl;
+    for(i=0; i<len-1; i++, iter++) std::cout << *iter << " ";
+    std::cout << *iter << std::endl;
 }
 
 void matrix::fill(double val){

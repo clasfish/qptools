@@ -1,6 +1,8 @@
 #include <iostream>
-#include <iomanip>
-#include "cuda_runtime.h"
+#include <string>
+#include <cuda_runtime.h>
+#include <thrust/reduce.h>
+#include <thrust/inner_product.h>
 #include "cumatrix_base.h"
 
 __global__ void cuda_fill(int len, double* a, double val){
@@ -11,6 +13,11 @@ __global__ void cuda_fill(int len, double* a, double val){
 __global__ void cuda_copy(int len, double* a, const double* vals){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if(i < len) a[i] = vals[i];
+}
+
+__global__ void cuda_copy(int len, double* a, const double* vals, double alpha){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < len) a[i] = vals[i] * alpha;
 }
 
 __global__ void cuda_add(int len, double* a, double val){
@@ -51,7 +58,8 @@ cumatrix::cumatrix(int nrows, int ncols):
     blockSize((size>=1024)?1024:size), //dim3(blockSize)
     gridSize((size+blockSize-1)/blockSize) //dim3(gridSize)
 {
-    cudaMalloc((void**)&begin, size*sizeof(double));
+    cudaError_t status = cudaMalloc((void**)&begin, size*sizeof(double));
+    if(status != cudaSuccess) throw std::runtime_error("Falied to allocate GPU memory with cudaMalloc: " + std::string(cudaGetErrorString(status)));
 }
 
 
@@ -81,8 +89,8 @@ void cumatrix::_display(int len) const{
     int i;
     double *a = new double[size], *iter=a;
     cudaMemcpy(a, begin, size * sizeof(double), cudaMemcpyDeviceToHost);
-    for(i=0; i<len-1; i++, iter++) std::cout << std::setprecision(9) << *iter << " ";
-    std::cout << std::setprecision(9) << *iter << std::endl;
+    for(i=0; i<len-1; i++, iter++) std::cout << *iter << ",";
+    std::cout << *iter << std::endl;
     free(a);
 }
 
@@ -92,6 +100,10 @@ void cumatrix::fill(double val){
 
 void cumatrix::copy(const double* vals){
     cuda_copy<<<blockSize, gridSize>>>(size, begin, vals);
+}
+
+void cumatrix::copy(const double* vals, double alpha){
+    cuda_copy<<<blockSize, gridSize>>>(size, begin, vals, alpha);
 }
 
 void cumatrix::add(double val){
@@ -118,3 +130,55 @@ void cumatrix::divide(const double* vals){
     cuda_divide<<<blockSize, gridSize>>>(size, begin, vals);
 }
 
+
+struct op_square{
+    __device__ inline double operator()(double x) const{
+        return x * x;
+    }
+};
+
+struct op_plus{
+    __device__ inline double operator()(double x, double y) const{
+        return x + y;
+    }
+};
+
+struct op_min{
+    __device__ inline double operator()(double x, double y) const{
+        return (x>y)?y:x;
+    }
+};
+
+struct op_max{
+    __device__ inline double operator()(double x, double y) const{
+        return (x>y)?x:y;
+    }
+};
+
+
+
+double cumatrix::min() const{
+    double hres;
+    double* dres = thrust::min_element(thrust::device, begin, begin+size);
+    cudaMemcpy(&hres, dres, sizeof(double), cudaMemcpyDeviceToHost);
+    return hres;
+}
+
+double cumatrix::max() const{
+    double hres;
+    double* dres = thrust::max_element(thrust::device, begin, begin+size);
+    cudaMemcpy(&hres, dres, sizeof(double), cudaMemcpyDeviceToHost);
+    return hres;
+}
+
+double cumatrix::sum() const{
+    return thrust::reduce(thrust::device, begin, begin+size);
+}
+
+double cumatrix::nrm2() const{
+    return std::sqrt(thrust::transform_reduce(thrust::device, begin, begin+size, op_square(), 0.0, op_plus()));
+}
+
+double cumatrix::dot(const double* vals) const{
+    return thrust::inner_product(thrust::device, begin, begin+size, vals, 0.0);
+}

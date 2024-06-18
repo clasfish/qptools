@@ -5,10 +5,10 @@ NVCCFLAGS = -std=c++14 -O3
 PYBIND_INCLUDE = $(shell python3 -m pybind11 --includes)
 PYTHON_SUFFIX = $(shell python3-config --extension-suffix)
 IPATH = -Ic/cudacore/include $(PYBIND_INCLUDE)
-LPATH = -lcublas
+LPATH = -lcublas -lcusolver
 # project
 TARGET = cudacore$(PYTHON_SUFFIX)
-SOURCES = build/cumatrix_base.o build/cumatrix_util.o build/cuda_bind.o #build/qp1.o
+SOURCES = build/cumatrix_base.o build/cumatrix_util.o build/qp1.o build/cudacore_bind.o
 
 all: $(TARGET)
 	@echo completed
@@ -16,11 +16,8 @@ all: $(TARGET)
 $(TARGET): $(SOURCES)
 	$(NVCC) $(NVCCFLAGS) -shared $(LPATH) $^ -o $@
 	
-test/%.o: cuda/src/%.cu
+build/%.o: c/cudacore/src/%.cu
 	$(NVCC) $(NVCCFLAGS) -c -Xcompiler "-fPIC" $(IPATH)  $^ -o $@
-
-test/%.o: cuda/src/%.cpp
-	$(CXX) $(CXXFLAGS) -c -fPIC  $(IPATH) $^ -o $@
 
 check:
 	echo $(PYBIND_INCLUDE)
@@ -34,5 +31,6 @@ clean:
 	# test
 	rm -f test/*.o
 	rm -f c/core/test/*.o c/core/test/test
+	rm -f c/cudacore/test/*.o c/cuadcore/test/test
 	# so
 	rm *.so

@@ -1,4 +1,5 @@
 #pragma once
+
 class matrix{
     public:
         const int nrows, ncols, size;
