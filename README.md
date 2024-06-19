@@ -1,31 +1,38 @@
-# Dependencies
-
-### Dependencies for CPU version:
-
-- setuptools
-- pybind11
-- numpy
-### Dependencies for GPU version:
-
-- setuptools
-- pybind11
-- pip >= 23.0
-- numpy
-- pytorch(cuda)
-
 # Installation
 
-*Notes: developing*
-<!-- 
-CPU version:
+## CPU version
 
-    pip install qptools
+Dependencies:
 
-GPU version:
+- setuptools
+- pybind11
+- numpy
 
-    pip install qptools --enable-gpu
--->
+Installation
+
+```bash
+pip install .
+```
+
+## CUDA version
+
+Dependencies
+
+- setuptools
+- pybind11
+- numpy
+- [CUDA Toolkits](https://developer.nvidia.com/cuda-toolkit) (>=11.0)
+
+
+Installation
+
+```bash
+pip install .
+python setup_cuda.py
+```
+
 # Quadratic Programming Problem
+
 
 ### function `qp1`
 
@@ -52,15 +59,21 @@ where $P$ is a $(n,n)$ positive definite matrix, $q$ is an $n$-dimensional vecto
 
 - **x**: A numpy.ndarray wieh shape $n$, for the solution to the problem
 
-#### Example
-
 ```python
+# sample data
 import numpy as np
+X = np.random.normal(size=(n_sample, n_variable))
+P = X.T @ X + 1e-9 * np.eye(n_variable)  # add 1e-9 to diagonals to make it strict positive definite
+q = np.random.normal(size=n_sample)
+lb = -np.ones(n_variable)
+rb = np.ones(n_variable)
+# cpu version
 import qptools
-P = np.array([[5.0, 3.0, 1.0], [3.0, 6.0, 2.0], [1.0, 2.0, 7.0]])
-lb = np.array([-2.0, 1.0, 3.0])
-rb = np.array([3.0, 5.0, 4.0])
-x = qptools.qp1(P=P, lb=lb, rb=rb)
+x = qptools.qp1(P=P, q=q, lb=lb, rb=rb)
+# cuda version
+import qptools.cuda
+handle = cuda.Handle()
+x = qptools.cuda.qp1(handle, P=P, q=q, lb=lb, rb=rb)
 ```
 
 ### function `qp2`
@@ -86,4 +99,21 @@ where $P$ is a $(n,n)$ positive definite matrix, $q$ is an $n$-dimensional vecto
 
 - **x**: A numpy.ndarray wieh shape $n$, for the solution to the problem
 
+
+```python
+# sample data
+import numpy as np
+X = np.random.normal(size=(n_sample, n_variable))
+P = X.T @ X + 1e-9 * np.eye(n_variable)  # add 1e-9 to diagonals to make it strict positive definite
+q = np.random.normal(size=n_sample)
+lb = -np.ones(n_variable)
+rb = np.ones(n_variable)
+# cpu version
+import qptools
+x = qptools.qp2(P=P, q=q, lb=lb, rb=rb)
+# cuda version
+import qptools.cuda
+handle = cuda.Handle()
+x = qptools.cuda.qp2(handle, P=P, q=q, lb=lb, rb=rb)
+```
 # References

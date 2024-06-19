@@ -1,4 +1,5 @@
 NVCC = nvcc
+CXXFLAGS = -std=c++14 -O3 -march=native -mtune=native -finline -ffunction-sections -ftree-vectorize -fopenmp -Wall -Wextra
 NVCCFLAGS = -std=c++14 -O3
 IPATH = -Ic/cudacore/include $(shell python3 -m pybind11 --includes)
 LPATH = -lcublas -lcusolver
@@ -23,6 +24,7 @@ check:
 ls:
 	@ls /root/.local/conda/envs/pytest/lib/python3.12/site-packages/qptools
 	@ls /root/.local/conda/envs/pytest/lib/python3.12/site-packages/cudacore.cpython-312-x86_64-linux-gnu.so
+
 clean:
 	# build
 	rm -rf qptools.egg-info
@@ -32,5 +34,6 @@ clean:
 	# test
 	rm -f test/*.o
 	rm -f c/core/test/*.o c/core/test/test
-	rm -f c/cudacore/test/*.o c/cuadcore/test/test
+	rm -f c/cudacore/test/*.o c/cudacore/test/test
 	# so
+	rm -f $(TARGET)
