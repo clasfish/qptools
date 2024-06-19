@@ -1,8 +1,13 @@
 import numpy as np
 import qptools.cudacore as cudacore
 
+class Handle:
+    def __init__(self):
+        self.cublas_handle = cudacore.CublasHandle()
+        self.cusolver_handle = cudacore.CusolverHandle()
+
 def matrix(A):
-    if isinstance(A, cudacore.matrix):
+    if isinstance(A, cudacore.cumatrix):
         return A
     elif isinstance(A, np.ndarray):
         if A.ndim == 0:
@@ -15,7 +20,7 @@ def matrix(A):
     else:
         raise ValueError(f"The input should be np.ndarray, but it is {A.__class__}")
 
-def qp1(P, q=None, lb=None, rb=None, G=None, h=None):
+def qp1(handle, P, q=None, lb=None, rb=None, G=None, h=None):
     P = matrix(P)
     n = P.nrows
     if P.ncols != n:
@@ -40,6 +45,6 @@ def qp1(P, q=None, lb=None, rb=None, G=None, h=None):
         rb = matrix(rb)
         if rb.size != n:
             raise ValueError(f"rb should be an array of size {n}")
-    solver = cudacore.qp1(P=P, q=q, lb=lb, rb=rb, G=G, h=h)
+    solver = cudacore.cuqp1(handle.cublas_handle, handle.cusolver_handle, P=P, q=q, lb=lb, rb=rb, G=G, h=h)
     x = solver.solve()
     return np.array(x).squeeze()

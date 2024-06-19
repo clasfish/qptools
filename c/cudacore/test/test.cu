@@ -2,7 +2,7 @@
 #include "cumatrix_util.h"
 #include "cumatrix_base.h"
 #include "cumatrix_read.h"
-#include "qp.h"
+#include "cuqp.h"
 #include <cstring>
 
 #include <cmath>
@@ -19,18 +19,13 @@ int main(){
     cumatrix *h1 = read_csv("../../../../data/h1.csv", ',');
     cumatrix *G2 = read_csv("../../../../data/G2.csv", ',');
     cumatrix *h2 = read_csv("../../../../data/h2.csv", ',');
-
-    cublasHandle_t cublas_handle = create_cublas_handle();
-    cusolverDnHandle_t cusolver_handle = create_cusolver_handle();
-
-    qp1 solver1(cublas_handle, cusolver_handle, P, nullptr, lb, rb, G0, h0);
+    CublasHandle cublas_handle = CublasHandle();
+    CusolverHandle cusolver_handle = CusolverHandle();
+    cuqp1 solver1(cublas_handle, cusolver_handle, P, nullptr, lb, rb, G0, h0);
     cumatrix *x = solver1.solve();
     x->_display(5);
-    qp1 solver2(cublas_handle, cusolver_handle, P, nullptr, nullptr, nullptr, G1, h1);
+    cuqp1 solver2(cublas_handle, cusolver_handle, P, nullptr, nullptr, nullptr, G1, h1);
     x = solver2.solve();
     x->_display(5);
-    cublasDestroy(cublas_handle);
-    cusolverDnDestroy(cusolver_handle);
-
 }
 

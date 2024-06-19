@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 #include "cumatrix_base.h"
 #include "cumatrix_util.h"
-#include "qp.h"
+#include "cuqp.h"
 namespace py = pybind11;
 
 
@@ -58,7 +58,7 @@ std::string cumatrix_repr(const cumatrix* a){
 
 PYBIND11_MODULE(cudacore, m){
     m.def("matrix_fromBuffer", &cumatrix_fromBuffer);
-    py::class_<cumatrix>(m, "matrix", py::buffer_protocol())
+    py::class_<cumatrix>(m, "cumatrix", py::buffer_protocol())
         .def(py::init<int, int>())
         .def(py::init<int, int, double>())
         .def_readonly("nrows", &cumatrix::nrows)
@@ -68,16 +68,18 @@ PYBIND11_MODULE(cudacore, m){
         .def("_display", &cumatrix::_display, py::arg("len"))
         .def("__repr__", &cumatrix_repr)
         .def("fill", &cumatrix::fill)
+        .def("sum", &cumatrix::sum)
+        .def("min", &cumatrix::min)
         .def_buffer(&cumatrix_toBuffer);
     py::class_<CublasHandle>(m, "CublasHandle")
         .def(py::init<>());
     py::class_<CusolverHandle>(m, "CusolverHandle")
         .def(py::init<>());
-    py::class_<qp1>(m, "qp1")
+    py::class_<cuqp1>(m, "cuqp1")
         .def(
             py::init<const CublasHandle&, const CusolverHandle&, const cumatrix*, const cumatrix*, const cumatrix*, const cumatrix*, const cumatrix*, const cumatrix*>(),
-            py::arg("cublas_handle"),
-            py::arg("cusolver_handle"),
+            py::arg("_cublas_handle"),
+            py::arg("_cusolver_handle"),
             py::arg("P"),
             py::arg("q") = nullptr,
             py::arg("lb") = nullptr,
@@ -85,5 +87,5 @@ PYBIND11_MODULE(cudacore, m){
             py::arg("G") = nullptr,
             py::arg("h") = nullptr
         )
-        .def("solve", &qp1::solve);
+        .def("solve", &cuqp1::solve);
 }

@@ -3,9 +3,9 @@
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 
-class qp1{
+class cuqp1{
     public:
-        qp1(const CublasHandle& cublas_handle, const CusolverHandle& cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h);
+        cuqp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h);
         cumatrix* solve();
     private:
         cublasHandle_t cublas_handle;

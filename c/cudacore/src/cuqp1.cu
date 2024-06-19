@@ -1,12 +1,12 @@
 #include "cumatrix_base.h"
 #include "cumatrix_util.h"
-#include "qp.h"
+#include "cuqp.h"
 #include "util.h"
 #include <thrust/reduce.h>
 #define MIN(i, j) (((i) < (j)) ? (i) : (j))
 #define MAX(i, j) (((i) > (j)) ? (i) : (j))
 
-qp1::qp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h):
+cuqp1::cuqp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h):
     cublas_handle(_cublas_handle.handle),
     cusolver_handle(_cusolver_handle.handle),
     n(P->nrows), lbdim(lb?n:0), rbdim(rb?n:0),
@@ -29,7 +29,7 @@ qp1::qp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_han
     }
 
 
-void qp1::fG(char trans, const cumatrix* x, cumatrix* y) const{
+void cuqp1::fG(char trans, const cumatrix* x, cumatrix* y) const{
     const double dbl1=1.0;
     if(trans == 'N'){
         if(lbdim) cuda_add<<<nblock, ngrid>>>(n, y->begin, x->begin, -1.0);
@@ -82,7 +82,7 @@ __global__ void update_L2(int n, double* L, const double* P, const double* dsq){
 
 
 
-void qp1::kktfactor(){
+void cuqp1::kktfactor(){
     const double dbl1=1.0;
     //dsq = d{-2}, Gd = d{-1}G
     scal_d<<<cblock, cgrid>>>(cdim, dsq->begin, d->begin);
@@ -96,8 +96,8 @@ void qp1::kktfactor(){
     cudaDeviceSynchronize();
     cublasDsyrk(cublas_handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, gdim, &dbl1, Gd->begin, gdim, &dbl1, L->begin, n);
     // potrf
-    int info;
-    cusolverDnXpotrf(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, d_work, d_worklen, h_work, h_worklen, d_info);
+    int info;;
+    CUSOLVER_CHECK(cusolverDnXpotrf(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, d_work, d_worklen, h_work, h_worklen, d_info));
     cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
     if(info < 0){
         std::cout << "Cholesky decomposition failed, the status code is" << info << std::endl;
@@ -105,7 +105,7 @@ void qp1::kktfactor(){
     }
 }
 
-void qp1::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
+void cuqp1::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
     z->divide(d->begin);
     cudaDeviceSynchronize();
     u->copy(z->begin);
@@ -165,7 +165,7 @@ __global__ void update_sz3(int len, double* s, double* z, double* ds, double* dz
         lambda[i] = ds[i] * dz[i];
     }
 }
-cumatrix* qp1::solve(){
+cumatrix* cuqp1::solve(){
     const int MAXITERS=100;
     const double dbl1=1.0;
     const double EXPON=3.0, STEP=0.99, ABSTOL=1e-7, RELTOL=1e-6, FEASTOL=1e-7;
@@ -215,6 +215,7 @@ cumatrix* qp1::solve(){
     cumatrix *lambda = new cumatrix(cdim, 1);
     update_scaling<<<cblock, cgrid>>>(cdim, d->begin, lambda->begin, s->begin, z->begin);
     for(iters=0; iters<MAXITERS; iters++){
+        if(iters==20) return nullptr;
         // rx = Px + q +G'z
         rx->fill(0.0);
         cudaDeviceSynchronize();
