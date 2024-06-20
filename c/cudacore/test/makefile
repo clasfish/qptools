@@ -6,7 +6,7 @@ PYTHON_INCLUDE = $(python -c "import sysconfig; print(sysconfig.get_path('includ
 IPATH = -I../include
 LPATH = -lcublas -lcusolver
 
-SRC = cumatrix_base.o cumatrix_read.o cumatrix_util.o cuqp1.o util.o test.o
+SRC = cumatrix_base.o cumatrix_read.o cumatrix_util.o cuqp.o util.o test.o
 
 test: $(SRC)
 	$(NVCC) $(NVCCFLAGS) $(LPATH) $^ -o $@

@@ -5,9 +5,9 @@
 #include <string>
 #include <cuda_runtime.h>
 #include "cumatrix_base.h"
+#include "util.h"
 
-
-void get_file_dimensions(int& nrows, int& ncols, const std::string& path, char sep){
+void get_file_dimensions(const std::string& path, char sep, int& nrows, int& ncols){
     std::ifstream file(path);
     if(!file.is_open()) throw std::runtime_error("Cannot open file:" + path);
     std::string line, item;
@@ -22,7 +22,7 @@ void get_file_dimensions(int& nrows, int& ncols, const std::string& path, char s
 
 cumatrix* read_csv(const std::string& path, char sep){
     int i, j, nrows, ncols;
-    get_file_dimensions(nrows, ncols, path, sep);
+    get_file_dimensions(path, sep, nrows, ncols);
     std::string line, item;
     std::ifstream file(path);
     if(!file.is_open()) throw std::runtime_error("Cannot open file:" + path);

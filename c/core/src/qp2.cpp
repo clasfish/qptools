@@ -228,6 +228,6 @@ matrix* qp2::solve(){
         }
         gap = ddot_(&cdim, s->begin, &int1, z->begin, &int1);
     }
-    std::cout << "Max number of iterations reached" << std::endl;
+    std::cerr << "Warning: Max number of iterations reached" << std::endl;
     return x;
 }

@@ -20,6 +20,11 @@ __global__ void cuda_copy(int len, double* a, const double* vals, double alpha){
     if(i < len) a[i] = vals[i] * alpha;
 }
 
+__global__ void cuda_fmcopy(int len, double* a, const double* vals1, const double* vals2){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < len) a[i] = vals1[i] * vals2[i];
+}
+
 __global__ void cuda_add(int len, double* a, double val){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if(i < len) a[i] += val;
@@ -55,11 +60,15 @@ cumatrix::cumatrix(int nrows, int ncols):
     nrows(nrows),
     ncols(ncols),
     size(nrows * ncols),
-    blockSize((size>=1024)?1024:size), //dim3(blockSize)
-    gridSize((size+blockSize-1)/blockSize) //dim3(gridSize)
+    blockSize((size<=1024)?size:1024),
+    gridSize((size<=1024)?1:(size+1023)/1024)
 {
-    cudaError_t status = cudaMalloc((void**)&begin, size*sizeof(double));
-    if(status != cudaSuccess) throw std::runtime_error("Falied to allocate GPU memory with cudaMalloc: " + std::string(cudaGetErrorString(status)));
+    if(size < 0) throw std::runtime_error("The size of a matrix should non-negative"); 
+    if(size == 0) begin = nullptr;
+    else{
+        cudaError_t status = cudaMalloc((void**)&begin, size*sizeof(double));
+        if(status != cudaSuccess) throw std::runtime_error("Falied to allocate GPU memory with cudaMalloc: " + std::string(cudaGetErrorString(status)));
+    }
 }
 
 
@@ -74,6 +83,7 @@ cumatrix::~cumatrix(){
 }
 
 void cumatrix::display() const{
+    if(size <= 0) return;
     int i, j;
     double *a = new double[size], *iter=a;
     cudaMemcpy(a, begin, size * sizeof(double), cudaMemcpyDeviceToHost);
@@ -86,6 +96,8 @@ void cumatrix::display() const{
 }
 
 void cumatrix::_display(int len) const{
+    if((size <= 0) || (len <= 0)) return;
+    if(len > size) throw std::runtime_error("The length should not be larger than the size of the matrix");
     int i;
     double *a = new double[size], *iter=a;
     cudaMemcpy(a, begin, size * sizeof(double), cudaMemcpyDeviceToHost);
@@ -104,6 +116,10 @@ void cumatrix::copy(const double* vals){
 
 void cumatrix::copy(const double* vals, double alpha){
     cuda_copy<<<blockSize, gridSize>>>(size, begin, vals, alpha);
+}
+
+void cumatrix::fmcopy(const double* vals1, const double* vals2){
+    cuda_fmcopy<<<blockSize, gridSize>>>(size, begin, vals1, vals2);
 }
 
 void cumatrix::add(double val){

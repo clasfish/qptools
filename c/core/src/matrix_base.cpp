@@ -4,7 +4,7 @@
 #include "matrix_base.h"
 
 matrix::matrix(int nrows, int ncols):
-    nrows(nrows), ncols(ncols), size(nrows*ncols), begin(new double[nrows*ncols]){}
+    nrows(nrows), ncols(ncols), size(nrows*ncols), begin((size>0)?(new double[size]):nullptr){}
 
 matrix::matrix(int nrows, int ncols, double val):
     matrix(nrows, ncols){std::fill(begin, begin+size, val);}

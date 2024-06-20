@@ -1,13 +1,7 @@
 #pragma once
 
 extern "C"{
-    // min, max, sum, nrm2, scal
-    double dmin_(const int *n, const double *x, const int *incx);
-    float smin_(const int *n, const float *x, const int *incx);
-    double dmax_(const int *n, const double *x, const int *incx);
-    float smax_(const int *n, const float *x, const int *incx);
-    double dsum_(const int *n, const double *x, const int *incx);
-    float ssum_(const int *n, const float *x, const int *incx);
+    // nrm2, scal
     double dnrm2_(const int *n, const double *x, const int *incx);
     float snrm2_(const int *n, const float *x, const int *incx);
     void dscal_(const int *n, const double *alpha, double *x, const int *incx);
