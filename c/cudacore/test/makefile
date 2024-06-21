@@ -6,7 +6,7 @@ PYTHON_INCLUDE = $(python -c "import sysconfig; print(sysconfig.get_path('includ
 IPATH = -I../include
 LPATH = -lcublas -lcusolver
 
-SRC = cumatrix_base.o cumatrix_read.o cumatrix_util.o cuqp.o util.o test.o
+SRC = matrix_base.o matrix_read.o matrix_util.o qp.o test.o
 
 test: $(SRC)
 	$(NVCC) $(NVCCFLAGS) $(LPATH) $^ -o $@
@@ -20,8 +20,12 @@ test: $(SRC)
 util.o: util.cpp
 	$(CXX) -g -c $(CXXFLAGS) $(IPATH) $^ -o $@
 
+valgrind: test
+	valgrind --leak-check=full ./test
+	
 check:
 	@echo $(PYTHON_INCLUDE)
 
 clean:
-	rm *.o
+	rm -f *.o
+	rm -f test

@@ -1,5 +1,4 @@
-#include <iostream>
-#include "cumatrix_util.h"
+#include "matrix_util.cuh"
 
 
 CublasHandle::CublasHandle(){

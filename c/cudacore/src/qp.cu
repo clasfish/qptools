@@ -1,8 +1,7 @@
-#include "cumatrix_base.h"
-#include "cumatrix_util.h"
-#include "cuqp.h"
-#include "util.h"
-#include <thrust/reduce.h>
+#include <iostream>
+#include "matrix_base.cuh"
+#include "matrix_util.cuh"
+#include "qp.cuh"
 
 
 __global__ void scal_d(int len, double* dsq, const double* d){
@@ -82,8 +81,8 @@ __global__ void update_sz3(int len, double* s, double* z, double* ds, double* dz
     }
 }
 
-// ------------------------cuqp1
-cuqp1::cuqp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h):
+// ------------------------qp1
+qp1::qp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const matrix* P, const matrix* q, const matrix* lb, const matrix* rb, const matrix* G, const matrix* h):
     cublas_handle(_cublas_handle.handle),
     cusolver_handle(_cusolver_handle.handle),
     n(P->nrows), lbdim(lb?n:0), rbdim(rb?n:0),
@@ -93,20 +92,22 @@ cuqp1::cuqp1(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver
     gblock(MIN(gdim, 1024)), ggrid((gdim<=1024)?1:((gdim+1023)/1024)),
     cblock(MIN(cdim, 1024)), cgrid((cdim<=1024)?1:((cdim+1023)/1024)), 
     P(P), q(q), lb(lb), rb(rb), G(G), h(h),
-    L(new cumatrix(n, n)),
-    d(new cumatrix(cdim, 1)),
-    dsq(new cumatrix(cdim, 1)),
-    Gd(new cumatrix(gdim, n)){
-        cusolverDnCreateParams(&cusolver_params);
+    L(new matrix(n, n)),
+    d(new matrix(cdim, 1)),
+    dsq(new matrix(cdim, 1)),
+    Gd(new matrix(gdim, n)){
         cudaMalloc(reinterpret_cast<void **>(&d_info), sizeof(int));
-        cusolverDnXpotrf_bufferSize(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, &d_worklen, &h_worklen);
+        CUSOLVER_CHECK(cusolverDnDpotrf_bufferSize(cusolver_handle, CUBLAS_FILL_MODE_LOWER, n, L->begin, n, &d_worklen));
         cudaMalloc(reinterpret_cast<void **>(&d_work), d_worklen);
-        if(h_worklen > 0) h_work = reinterpret_cast<void *>(malloc(h_worklen));
-        else h_work = nullptr;
     }
 
 
-void cuqp1::fG(char trans, const cumatrix* x, cumatrix* y) const{
+qp1::~qp1(){
+    cudaFree(d_info);
+    cudaFree(d_work);
+}
+
+void qp1::fG(char trans, const matrix* x, matrix* y) const{
     const double dbl1=1.0;
     if(trans == 'N'){
         if(lbdim) cuda_add<<<nblock, ngrid>>>(n, y->begin, x->begin, -1.0);
@@ -121,7 +122,7 @@ void cuqp1::fG(char trans, const cumatrix* x, cumatrix* y) const{
 }
 
 
-void cuqp1::kktfactor(){
+void qp1::kktfactor(){
     const double dbl1=1.0;
     //dsq = d{-2}, Gd = d{-1}G
     scal_d<<<cblock, cgrid>>>(cdim, dsq->begin, d->begin);
@@ -138,7 +139,7 @@ void cuqp1::kktfactor(){
     cudaDeviceSynchronize();
     // potrf
     int info;
-    CUSOLVER_CHECK(cusolverDnXpotrf(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, d_work, d_worklen, h_work, h_worklen, d_info));
+    CUSOLVER_CHECK(cusolverDnDpotrf(cusolver_handle, CUBLAS_FILL_MODE_LOWER, n, L->begin, n, d_work, d_worklen, d_info));
     cudaDeviceSynchronize();
     cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
     if(info < 0){
@@ -147,7 +148,7 @@ void cuqp1::kktfactor(){
     }
 }
 
-void cuqp1::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
+void qp1::kktsolver(matrix* x, matrix* z, matrix* u) const{
     z->divide(d->begin);
     cudaDeviceSynchronize();
     u->copy(z->begin);
@@ -167,7 +168,7 @@ void cuqp1::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
 }
 
 
-cumatrix* cuqp1::solve(){
+matrix* qp1::solve(){
     const int MAXITERS=100;
     const double dbl1=1.0;
     const double EXPON=3.0, STEP=0.99, ABSTOL=1e-7, RELTOL=1e-6, FEASTOL=1e-7;
@@ -177,7 +178,7 @@ cumatrix* cuqp1::solve(){
     double pcost, dcost, pres, dres, gap, relgap;
     double sigma, mu, sigmamu, dsdz;
     // bh
-    cumatrix *bh = new cumatrix(cdim, 1);
+    matrix *bh = new matrix(cdim, 1);
     if(lbdim) cuda_copy<<<nblock, ngrid>>>(lbdim, bh->begin, lb->begin, -1.0);
     if(rbdim) cuda_copy<<<nblock, ngrid>>>(rbdim, bh->begin+lbdim, rb->begin);
     if(gdim) cuda_copy<<<gblock, ggrid>>>(gdim, bh->begin+bdim, h->begin);
@@ -188,15 +189,15 @@ cumatrix* cuqp1::solve(){
     // initialize
     d->fill(1.0);
     kktfactor();
-    cumatrix *x = new cumatrix(n, 1);
+    matrix *x = new matrix(n, 1);
     if(q) x->copy(q->begin, -1.0);
     else x->fill(0.0);
-    cumatrix *z = new cumatrix(cdim, 1);
+    matrix *z = new matrix(cdim, 1);
     z->copy(bh->begin);
-    cumatrix *u = new cumatrix(cdim, 1);
+    matrix *u = new matrix(cdim, 1);
     cudaDeviceSynchronize();
     kktsolver(x, z, u);
-    cumatrix *s = new cumatrix(cdim, 1);
+    matrix *s = new matrix(cdim, 1);
     s->copy(z->begin, -1.0);
     // ts & tz
     nrms = z->nrm2();
@@ -208,14 +209,14 @@ cumatrix* cuqp1::solve(){
     cudaDeviceSynchronize();
     gap = z->dot(s->begin);
     // steps
-    cumatrix *rx = new cumatrix(n, 1);
-    cumatrix *rz = new cumatrix(cdim, 1);
-    cumatrix *dx = new cumatrix(n, 1);
+    matrix *rx = new matrix(n, 1);
+    matrix *rz = new matrix(cdim, 1);
+    matrix *dx = new matrix(n, 1);
     dx->copy(x->begin);
-    cumatrix *dz = new cumatrix(cdim, 1);
-    cumatrix *ds = new cumatrix(cdim, 1);
-    cumatrix *s2 = new cumatrix(cdim, 1);
-    cumatrix *lambda = new cumatrix(cdim, 1);
+    matrix *dz = new matrix(cdim, 1);
+    matrix *ds = new matrix(cdim, 1);
+    matrix *s2 = new matrix(cdim, 1);
+    matrix *lambda = new matrix(cdim, 1);
     update_scaling<<<cblock, cgrid>>>(cdim, d->begin, lambda->begin, s->begin, z->begin);
     for(iters=0; iters<MAXITERS; iters++){
         // rx = Px + q +G'z
@@ -291,9 +292,9 @@ cumatrix* cuqp1::solve(){
 }
 
 
-// ------------------------cuqp2
+// ------------------------qp2
 
-cuqp2::cuqp2(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const cumatrix* P, const cumatrix* q, const cumatrix* lb, const cumatrix* rb, const cumatrix* G, const cumatrix* h):
+qp2::qp2(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver_handle, const matrix* P, const matrix* q, const matrix* lb, const matrix* rb, const matrix* G, const matrix* h):
     cublas_handle(_cublas_handle.handle),
     cusolver_handle(_cusolver_handle.handle),
     n(P->nrows), lbdim(lb?n:0), rbdim(rb?n:0),
@@ -304,22 +305,30 @@ cuqp2::cuqp2(const CublasHandle& _cublas_handle, const CusolverHandle& _cusolver
     gblock(MIN(gdim, 1024)), ggrid((gdim<=1024)?1:((gdim+1023)/1024)),
     cblock(MIN(cdim, 1024)), cgrid((cdim<=1024)?1:((cdim+1023)/1024)), 
     P(P), q(q), lb(lb), rb(rb), G(G), h(h),
-    L(new cumatrix(n, n)),
-    bd(new cumatrix(bdim, 1)),
-    d(new cumatrix(cdim, 1)),
-    dsq(new cumatrix(cdim, 1)),
-    Gd(new cumatrix(gdim, n)){
-        cusolverDnCreateParams(&cusolver_params);
+    L(new matrix(n, n)),
+    bd(new matrix(bdim, 1)),
+    d(new matrix(cdim, 1)),
+    dsq(new matrix(cdim, 1)),
+    Gd(new matrix(gdim, n)){
         cudaMalloc(reinterpret_cast<void **>(&d_info), sizeof(int));
-        cusolverDnXpotrf_bufferSize(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, &d_worklen, &h_worklen);
+        CUSOLVER_CHECK(cusolverDnDpotrf_bufferSize(cusolver_handle, CUBLAS_FILL_MODE_LOWER, n, L->begin, n, &d_worklen));
         cudaMalloc(reinterpret_cast<void **>(&d_work), d_worklen);
-        if(h_worklen > 0) h_work = reinterpret_cast<void *>(malloc(h_worklen));
-        else h_work = nullptr;
     }
 
+qp2::~qp2(){
+    cudaFree(d_info);
+    cudaFree(d_work);
+}
 
+cusolverStatus_t
+cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle,
+                 cublasFillMode_t uplo,
+                 int n,
+                 double *A,
+                 int lda,
+                 int *Lwork );
 
-void cuqp2::fG(char trans, const cumatrix* x, cumatrix* y) const{
+void qp2::fG(char trans, const matrix* x, matrix* y) const{
     double s;
     const double dbl1 = 1.0;
     if(trans == 'N'){
@@ -354,7 +363,7 @@ void cuqp2::fG(char trans, const cumatrix* x, cumatrix* y) const{
 }
 
 
-void cuqp2::kktfactor(){
+void qp2::kktfactor(){
     double bdb=0.0;
     const double dbl1=1.0;
     //dsq = d{-2}, Gd = d{-1}G
@@ -386,7 +395,7 @@ void cuqp2::kktfactor(){
     cudaDeviceSynchronize();
     // potrf
     int info;
-    CUSOLVER_CHECK(cusolverDnXpotrf(cusolver_handle, cusolver_params, CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, L->begin, n, CUDA_R_64F, d_work, d_worklen, h_work, h_worklen, d_info));
+    CUSOLVER_CHECK(cusolverDnDpotrf(cusolver_handle, CUBLAS_FILL_MODE_LOWER, n, L->begin, n, d_work, d_worklen, d_info));
     cudaDeviceSynchronize();
     cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
     if(info < 0){
@@ -395,7 +404,7 @@ void cuqp2::kktfactor(){
     }
 }
 
-void cuqp2::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
+void qp2::kktsolver(matrix* x, matrix* z, matrix* u) const{
     z->divide(d->begin);
     cudaDeviceSynchronize();
     u->copy(z->begin);
@@ -415,7 +424,7 @@ void cuqp2::kktsolver(cumatrix* x, cumatrix* z, cumatrix* u) const{
 }
 
 
-cumatrix* cuqp2::solve(){
+matrix* qp2::solve(){
     const int MAXITERS=100;
     const double dbl1=1.0;
     const double EXPON=3.0, STEP=0.99, ABSTOL=1e-7, RELTOL=1e-6, FEASTOL=1e-7;
@@ -425,7 +434,7 @@ cumatrix* cuqp2::solve(){
     double pcost, dcost, pres, dres, gap, relgap;
     double sigma, mu, sigmamu, dsdz;
     // bh
-    cumatrix *bh = new cumatrix(cdim, 1);
+    matrix *bh = new matrix(cdim, 1);
     if(bdim) cuda_fill<<<bblock, bgrid>>>(bdim, bh->begin, 0.0);
     if(gdim) cuda_copy<<<gblock, ggrid>>>(gdim, bh->begin+bdim, h->begin);
     // res0
@@ -435,15 +444,15 @@ cumatrix* cuqp2::solve(){
     // initialize
     d->fill(1.0);
     kktfactor();
-    cumatrix *x = new cumatrix(n, 1);
+    matrix *x = new matrix(n, 1);
     if(q) x->copy(q->begin, -1.0);
     else x->fill(0.0);
-    cumatrix *z = new cumatrix(cdim, 1);
+    matrix *z = new matrix(cdim, 1);
     z->copy(bh->begin);
-    cumatrix *u = new cumatrix(cdim, 1);
+    matrix *u = new matrix(cdim, 1);
     cudaDeviceSynchronize();
     kktsolver(x, z, u);
-    cumatrix *s = new cumatrix(cdim, 1);
+    matrix *s = new matrix(cdim, 1);
     s->copy(z->begin, -1.0);
     // ts & tz
     nrms = z->nrm2();
@@ -455,14 +464,14 @@ cumatrix* cuqp2::solve(){
     cudaDeviceSynchronize();
     gap = z->dot(s->begin);
     // steps
-    cumatrix *rx = new cumatrix(n, 1);
-    cumatrix *rz = new cumatrix(cdim, 1);
-    cumatrix *dx = new cumatrix(n, 1);
+    matrix *rx = new matrix(n, 1);
+    matrix *rz = new matrix(cdim, 1);
+    matrix *dx = new matrix(n, 1);
     dx->copy(x->begin);
-    cumatrix *dz = new cumatrix(cdim, 1);
-    cumatrix *ds = new cumatrix(cdim, 1);
-    cumatrix *s2 = new cumatrix(cdim, 1);
-    cumatrix *lambda = new cumatrix(cdim, 1);
+    matrix *dz = new matrix(cdim, 1);
+    matrix *ds = new matrix(cdim, 1);
+    matrix *s2 = new matrix(cdim, 1);
+    matrix *lambda = new matrix(cdim, 1);
     update_scaling<<<cblock, cgrid>>>(cdim, d->begin, lambda->begin, s->begin, z->begin);
     for(iters=0; iters<MAXITERS; iters++){
         // rx = Px + q +G'z

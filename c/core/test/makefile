@@ -1,4 +1,4 @@
-SRC = matrix_base.o matrix_read.o util.o qp1.o qp2.o test.o
+SRC = matrix_base.o matrix_read.o util.o qp.o test.o
 CXX ?= g++
 CXXFLAGS += -std=c++14 -O3 -finline -Wall -Wextra
 IPATH += -I../include
@@ -26,10 +26,14 @@ test: $(SRC)
 	$(CXX) -g -c $(CXXFLAGS) $(IPATH) $^ -o $@
 
 
+valgrind: test
+	valgrind --leak-check=full ./test
+	
 debug:
 	@echo $(LIBMKL)
 	@echo $(LIBOPENBLAS)
 	@echo $(LDFLAGS)
 	
 clean:
-	rm *.o
+	rm -f *.o
+	rm -f test

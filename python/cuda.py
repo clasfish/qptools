@@ -7,7 +7,7 @@ class Handle:
         self.cusolver_handle = cudacore.CusolverHandle()
 
 def matrix(A):
-    if isinstance(A, cudacore.cumatrix):
+    if isinstance(A, cudacore.matrix):
         return A
     elif isinstance(A, np.ndarray):
         if A.ndim == 0:
@@ -45,6 +45,36 @@ def qp1(handle, P, q=None, lb=None, rb=None, G=None, h=None):
         rb = matrix(rb)
         if rb.size != n:
             raise ValueError(f"rb should be an array of size {n}")
-    solver = cudacore.cuqp1(handle.cublas_handle, handle.cusolver_handle, P=P, q=q, lb=lb, rb=rb, G=G, h=h)
+    solver = cudacore.qp1(handle.cublas_handle, handle.cusolver_handle, P=P, q=q, lb=lb, rb=rb, G=G, h=h)
+    x = solver.solve()
+    return np.array(x).squeeze()
+
+
+def qp2(handle, P, q=None, lb=None, rb=None, G=None, h=None):
+    P = matrix(P)
+    n = P.nrows
+    if P.ncols != n:
+        raise ValueError("P should be a square matrix")
+    if q is not None:
+        q = matrix(q)
+        if q.size != n:
+            raise ValueError(f"q should be an array of size {n}")
+    if G is not None:
+        G = matrix(G)
+        g = G.nrows
+        if G.ncols != n:
+            raise ValueError(f"G should be a matrix with {n} columns")
+        h = matrix(h)
+        if h.size != g:
+            raise ValueError(f"h should be an array of size {g}")
+    if lb is not None:
+        lb = matrix(lb)
+        if lb.size != n:
+            raise ValueError(f"lb should be an array of size {n}")
+    if rb is not None:
+        rb = matrix(rb)
+        if rb.size != n:
+            raise ValueError(f"rb should be an array of size {n}")
+    solver = cudacore.qp2(handle.cublas_handle, handle.cusolver_handle, P=P, q=q, lb=lb, rb=rb, G=G, h=h)
     x = solver.solve()
     return np.array(x).squeeze()

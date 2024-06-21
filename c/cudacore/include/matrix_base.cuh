@@ -1,22 +1,20 @@
 #pragma once
-//#include <cuda_runtime.h>
 __global__ void cuda_fill(int len, double* a, double val);
 __global__ void cuda_copy(int len, double* a, const double* vals);
 __global__ void cuda_copy(int len, double* a, const double* vals, double alpha);
 __global__ void cuda_fmcopy(int len, double* a, const double* vals1, const double* vals2);
 __global__ void cuda_add(int len, double* a, const double* vals, double alpha);
 __global__ void cuda_fmadd(int len, double* a, const double* vals1, const double* vals2);
-class cumatrix{
+
+class matrix{
     public:
         const int nrows, ncols, size;
-        //const dim3 blockSize;
-        //const dim3 gridSize;
         const int blockSize;
         const int gridSize;
         double *begin;
-        cumatrix(int nrows, int ncols);
-        cumatrix(int nrows, int ncols, double val);
-        ~cumatrix();
+        matrix(int nrows, int ncols);
+        matrix(int nrows, int ncols, double val);
+        ~matrix();
         void display() const;
         void _display(int len) const;
         void fill(double val);

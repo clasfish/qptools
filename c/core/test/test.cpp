@@ -16,6 +16,7 @@ int main(){
     qp1 solver1(P, nullptr, lb, rb, G0, h0);
     matrix *x1 = solver1.solve();
     x1->_display(5);
+    /*
     // qp1 - 2
     qp1 solver2(P, nullptr, nullptr, nullptr, G1, h1);
     matrix *x2 = solver2.solve();
@@ -28,5 +29,6 @@ int main(){
     qp2 solver4(P, nullptr, nullptr, nullptr, G2, h2);
     matrix *x4 = solver4.solve();
     x4->_display(5);
+    */
 }
 
