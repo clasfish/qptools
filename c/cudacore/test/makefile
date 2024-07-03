@@ -6,7 +6,7 @@ PYTHON_INCLUDE = $(python -c "import sysconfig; print(sysconfig.get_path('includ
 IPATH = -I../include
 LPATH = -lcublas -lcusolver
 
-SRC = matrix_base.o matrix_read.o matrix_util.o qp.o test.o
+SRC = matrix_base.o matrix_read.o matrix_util.o qpp.o test.o
 
 test: $(SRC)
 	$(NVCC) $(NVCCFLAGS) $(LPATH) $^ -o $@
