@@ -56,14 +56,14 @@ __global__ void cuda_divide(int len, double* a, const double* vals){
 }
 
 
-matrix::matrix(int nrows, int ncols):
+cumatrix::cumatrix(int nrows, int ncols):
     nrows(nrows),
     ncols(ncols),
     size(nrows * ncols),
     blockSize((size<=1024)?size:1024),
     gridSize((size<=1024)?1:(size+1023)/1024)
 {
-    if(size < 0) throw std::runtime_error("The size of a matrix should non-negative"); 
+    if(size < 0) throw std::runtime_error("The size of a cumatrix should non-negative"); 
     if(size == 0) begin = nullptr;
     else{
         cudaError_t status = cudaMalloc((void**)&begin, size*sizeof(double));
@@ -73,16 +73,16 @@ matrix::matrix(int nrows, int ncols):
 
 
 
-matrix::matrix(int nrows, int ncols, double val):
-    matrix(nrows, ncols){
+cumatrix::cumatrix(int nrows, int ncols, double val):
+    cumatrix(nrows, ncols){
     cuda_fill<<<blockSize, gridSize>>>(size, begin, val);
 }
 
-matrix::~matrix(){
+cumatrix::~cumatrix(){
     cudaFree(begin);
 }
 
-void matrix::display() const{
+void cumatrix::display() const{
     if(size <= 0) return;
     int i, j;
     double *a = new double[size], *iter=a;
@@ -95,9 +95,9 @@ void matrix::display() const{
     free(a);
 }
 
-void matrix::_display(int len) const{
+void cumatrix::_display(int len) const{
     if((size <= 0) || (len <= 0)) return;
-    if(len > size) throw std::runtime_error("The length should not be larger than the size of the matrix");
+    if(len > size) throw std::runtime_error("The length should not be larger than the size of the cumatrix");
     int i;
     double *a = new double[size], *iter=a;
     cudaMemcpy(a, begin, size * sizeof(double), cudaMemcpyDeviceToHost);
@@ -106,43 +106,43 @@ void matrix::_display(int len) const{
     free(a);
 }
 
-void matrix::fill(double val){
+void cumatrix::fill(double val){
     cuda_fill<<<blockSize, gridSize>>>(size, begin, val);
 }
 
-void matrix::copy(const double* vals){
+void cumatrix::copy(const double* vals){
     cuda_copy<<<blockSize, gridSize>>>(size, begin, vals);
 }
 
-void matrix::copy(const double* vals, double alpha){
+void cumatrix::copy(const double* vals, double alpha){
     cuda_copy<<<blockSize, gridSize>>>(size, begin, vals, alpha);
 }
 
-void matrix::fmcopy(const double* vals1, const double* vals2){
+void cumatrix::fmcopy(const double* vals1, const double* vals2){
     cuda_fmcopy<<<blockSize, gridSize>>>(size, begin, vals1, vals2);
 }
 
-void matrix::add(double val){
+void cumatrix::add(double val){
     cuda_add<<<blockSize, gridSize>>>(size, begin, val);
 }
 
-void matrix::add(const double* vals, double alpha){
+void cumatrix::add(const double* vals, double alpha){
     cuda_add<<<blockSize, gridSize>>>(size, begin, vals, alpha);
 }
 
-void matrix::fmadd(const double* vals1, const double* vals2){
+void cumatrix::fmadd(const double* vals1, const double* vals2){
     cuda_fmadd<<<blockSize, gridSize>>>(size, begin, vals1, vals2);
 }
 
-void matrix::scal(double val){
+void cumatrix::scal(double val){
     cuda_scal<<<blockSize, gridSize>>>(size, begin, val);
 }
 
-void matrix::scal(const double* vals){
+void cumatrix::scal(const double* vals){
     cuda_scal<<<blockSize, gridSize>>>(size, begin, vals);
 }
 
-void matrix::divide(const double* vals){
+void cumatrix::divide(const double* vals){
     cuda_divide<<<blockSize, gridSize>>>(size, begin, vals);
 }
 
@@ -173,28 +173,28 @@ struct op_max{
 
 
 
-double matrix::min() const{
+double cumatrix::min() const{
     double hres;
     double* dres = thrust::min_element(thrust::device, begin, begin+size);
     cudaMemcpy(&hres, dres, sizeof(double), cudaMemcpyDeviceToHost);
     return hres;
 }
 
-double matrix::max() const{
+double cumatrix::max() const{
     double hres;
     double* dres = thrust::max_element(thrust::device, begin, begin+size);
     cudaMemcpy(&hres, dres, sizeof(double), cudaMemcpyDeviceToHost);
     return hres;
 }
 
-double matrix::sum() const{
+double cumatrix::sum() const{
     return thrust::reduce(thrust::device, begin, begin+size);
 }
 
-double matrix::nrm2() const{
+double cumatrix::nrm2() const{
     return std::sqrt(thrust::transform_reduce(thrust::device, begin, begin+size, op_square(), 0.0, op_plus()));
 }
 
-double matrix::dot(const double* vals) const{
+double cumatrix::dot(const double* vals) const{
     return thrust::inner_product(thrust::device, begin, begin+size, vals, 0.0);
 }

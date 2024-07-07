@@ -18,7 +18,6 @@ def get_list_arg(section, option):
 def get_dict_arg(section, option):
     return dict((item.split(':')) for item in _config.get(section, option).split(','))
 
-
 COMMON_MSVC_FLAGS = get_list_arg("flag", "COMMON_MSVC_FLAGS")
 MSVC_IGNORE_CUDAFE_WARNINGS = get_list_arg("flag", "MSVC_IGNORE_CUDAFE_WARNINGS")
 COMMON_NVCC_FLAGS = get_list_arg("flag", "COMMON_NVCC_FLAGS")
@@ -65,14 +64,17 @@ def find_cuda_home():
                 else:
                     cuda_home = cuda_homes[0]
             else:
-                cuda_home = '/use/local/cuda'
+                cuda_home = '/usr/local/cuda'
             if not os.path.exists(cuda_home):
                 cuda_home = None
     return cuda_home
 
 USE_CUDA = int(os.getenv('USE_CUDA', 0))
 CUDA_HOME = find_cuda_home()
-NVCC = os.path.join(CUDA_HOME, "bin", "nvcc") if CUDA_HOME else None
+CUDA_LD_FLAGS = []
+if CUDA_HOME is not None:
+    NVCC = os.path.join(CUDA_HOME, "bin", "nvcc")
+    CUDA_LD_FLAGS = [f'-L{os.path.join(CUDA_HOME, subdir)}' for subdir in ['lib', 'lib64']]
 
 if USE_CUDA and not CUDA_HOME:
     raise RuntimeError("CUDA is not available, please check the CUDA_HOME or CUDA_PATH")
@@ -80,7 +82,7 @@ if USE_CUDA and not CUDA_HOME:
 def append_std17_if_no_std_present(compiler_type, cflags):
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     cpp_flag = cpp_flag_prefix + 'c++17'
-    if not any(cflag.startswith(cpp_flag_prefix) for cflag  in cflags):
+    if not any(cflag.startswith(cpp_flag_prefix) for cflag in cflags):
         cflags.append(cpp_flag)
 
 def unix_cuda_flags(cflags):
@@ -106,13 +108,13 @@ class BuildExtension(build_ext):
         compiler_name = self.compiler.compiler_cxx[0] if hasattr(self.compiler, "compiler_cxx") else get_cxx_compiler()
         cuda_ext = False
         extension_iter = iter(self.extensions)
-        extension = next(extension_iter, None)
-        while not cuda_ext and extension:
+        for extension in self.extensions:
             for source in extension.sources:
                 if os.path.splitext(source)[1] in ['.cu', '.cuh']:
                     cuda_ext = True
                     break
-            extension = next(extension_iter, None)
+            if cuda_ext:
+                break
         #if cuda_ext:
         #    check_cuda_version(compiler_name, compiler_version)
         for extension in self.extensions:
@@ -187,16 +189,15 @@ if USE_CUDA:
             'cxx': CXX_FLAGS,
             'nvcc': NVCC_FLAGS
         },
-        extra_link_args = ['-Wl,--no-as-needed', '-lcuda', '-lcublas', '-lcusolver']
+        extra_link_args = CUDA_LD_FLAGS + ['-Wl,--no-as-needed', '-lcudart', '-lcublas', '-lcusolver']
     )
     ext_modules.append(cudacore)
     cmdclass = {'build_ext': BuildExtension}
 
 
-
 setup(
     name = "qptools",
-    version = "1.0.1", 
+    version = "1.0.2", 
     description = "quadratic optimization tools",
     ext_modules = ext_modules,
     packages = ["qptools"],

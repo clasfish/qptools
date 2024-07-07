@@ -19,14 +19,14 @@ void get_file_dimensions(const std::string& path, char sep, int& nrows, int& nco
     file.close();
 }
 
-matrix* read_csv(const std::string& path, char sep){
+cumatrix* read_csv(const std::string& path, char sep){
     int i, j, nrows, ncols;
     get_file_dimensions(path, sep, nrows, ncols);
     std::string line, item;
     std::ifstream file(path);
     if(!file.is_open()) throw std::runtime_error("Cannot open file:" + path);
     double *a = new double[nrows*ncols], *iter;
-    matrix *A = new matrix(nrows, ncols);
+    cumatrix *A = new cumatrix(nrows, ncols);
     for(i=0; i<nrows; i++){
         iter = a + i;
         std::getline(file, line);

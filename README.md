@@ -17,7 +17,9 @@ pip install .
 CUDA version
 
 ```bash
-USE_CUDA=1; pip install .
+export CUDA_HOME=...
+export USE_CUDA=1
+pip install .
 ```
 
 
