@@ -198,7 +198,9 @@ if USE_CUDA:
 setup(
     name = "qptools",
     version = "1.0.2", 
-    description = "quadratic optimization tools",
+    description = "Fast quadratic programming tools (with CUDA support)",
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     ext_modules = ext_modules,
     packages = ["qptools"],
     package_dir = {"qptools": "python"},

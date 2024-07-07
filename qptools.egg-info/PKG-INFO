@@ -1,3 +1,16 @@
+Metadata-Version: 2.1
+Name: qptools
+Version: 1.0.2
+Summary: Fast quadratic programming tools (with CUDA support)
+Home-page: https://gitee.com/clawfish/qptools
+Author: clawfish
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Education
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # Dependencies
 
 - `setuptools` version 42 or later
