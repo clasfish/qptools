@@ -1,6 +1,4 @@
-# qptools
-
-Fast quadratic programming tools.
+# Fast quadratic programming tools (qptools)
 
 [中文](README.zh-CN.md) | [English](README.md)
 

@@ -1,7 +1,5 @@
 
-# qptools
-
-快速二次优化工具
+# 快速二次优化工具 (qptools)
 
 [中文](README.zh-CN.md) | [English](README.md)
 
@@ -66,7 +64,7 @@ $$
 - **C++ (CPU)**: 查看[./c/core/test/test.cpp](./c/core/test/test.cpp)
 - **C++ (CUDA)**: 查看[./c/core/test/test.cu](./c/core/test/test.cu)
 
-## 引用文献
+## 参考文献
 
 1. Nesterov, Y., & Todd, M. J. (1997). Self-scaled barriers and interior-point methods for convex programming. Mathematics of Operations Research, 22(1), 1-42.
 
