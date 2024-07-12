@@ -1,14 +1,23 @@
-[中文](README.zh-CN.md)
-[English](README.md)
+# qptools
 
-# Dependencies
+Fast quadratic programming tools.
+
+[中文](README.zh-CN.md) | [English](README.md)
+
+## Platforms
+
+- **Windows**: To Do
+- **Linux**: Supports CPU and CUDA versions
+- **MacOS**: Supports CPU version
+
+## Dependencies
 
 - `setuptools`
 - `pybind11`
 - `numpy`
 - [CUDA Toolkits](https://developer.nvidia.com/cuda-toolkit) for CUDA supports
 
-# Installation
+## Installation
 
 ### CPU version
 
@@ -27,7 +36,7 @@ pip install qptools
 ```
 
 
-# Solving Quadratic Programming Problems
+## Solving Quadratic Programming Problems
 
 ### `qp1`: Basic Quadratic Programming
 
@@ -49,14 +58,14 @@ $$
 
 where $P$ is a $(n,n)$ positive definite matrix, $q$ is an $n$-dimensional vector, $G$ is a $(g,n)$ matrix, $h$ is a $g$-dimensional vector, and $lb,rb$ are $n$-dimensional vectors defining the lower and upper bounds for standardized variable $\frac{x}{\sum(x)}$.
 
-# Example
+## Example
 
 - **Python (CPU):** [./example/cpu.ipynb](./example/cpu.ipynb)
 - **Python (CUDA):** [./example/cuda.ipynb](./example/cuda.ipynb)
 - **C++ (CPU):** [./c/core/test/test.cpp](./c/core/test/test.cpp)
 - **C++ (CUDA):** [./c/core/test/test.cu](./c/core/test/test.cu)
 
-# References
+## References
 
 1. Nesterov, Y., & Todd, M. J. (1997). Self-scaled barriers and interior-point methods for convex programming. Mathematics of Operations Research, 22(1), 1-42.
 

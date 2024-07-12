@@ -38,14 +38,6 @@ def get_cxx_compiler():
         compiler = os.environ.get("CXX", "c++")
     return compiler
 
-# libs
-libs = os.listdir(os.path.join(os.environ["CONDA_PREFIX"], "lib"))
-if any("libmkl" in lib for lib in libs):
-    libraries = ["mkl_rt"]
-elif any("libopenblas" in lib for lib in libs):
-    libraries = ["blas", "lapack"]
-else:
-    raise ValueError("The installation needs mkl or openblas")
 
 # cuda
 def find_cuda_home():
@@ -157,10 +149,24 @@ class BuildExtension(build_ext):
             self.compiler._compile = unix_wrap_single_compile
         build_ext.build_extensions(self)
 
-ext_modules = []
-cmdclass = dict()
-
 # core module
+libraries = []
+extra_link_args = []
+if IS_LINUX:
+    libs = os.listdir(os.path.join(os.environ["CONDA_PREFIX"], "lib"))
+    if any("libmkl" in lib for lib in libs):
+        libraries += ["mkl_rt"]
+    elif any("libopenblas" in lib for lib in libs):
+        libraries += ["blas", "lapack"]
+    else:
+        raise ValueError("The installation needs mkl or openblas")
+elif IS_MACOS:
+    extra_link_args += ['-framework', 'Accelerate']
+elif IS_WINDOWS:
+    raise NotImplementedError("The windows version is not implemented")
+else:
+    raise ValueError("Cannot identify the operating system")
+
 core = Pybind11Extension(
     "qptools.core",
     libraries = libraries,
@@ -172,32 +178,33 @@ core = Pybind11Extension(
     include_dirs = ["c/core/include"],
     extra_compile_args = CXX_FLAGS
 )
-ext_modules.append(core)
 
-# cuda core module
-if USE_CUDA:
-    cudacore = Pybind11Extension(
-        "qptools.cudacore",
-        sources = [
-            "c/cudacore/src/matrix_base.cu",
-            "c/cudacore/src/matrix_util.cu",
-            "c/cudacore/src/qp.cu",
-            "c/cudacore/src/cudacore_bind.cu"
-        ],
-        include_dirs = ["c/cudacore/include"],
-        extra_compile_args = {
-            'cxx': CXX_FLAGS,
-            'nvcc': NVCC_FLAGS
-        },
-        extra_link_args = CUDA_LD_FLAGS + ['-Wl,--no-as-needed', '-lcudart', '-lcublas', '-lcusolver']
-    )
-    ext_modules.append(cudacore)
+cudacore = Pybind11Extension(
+    "qptools.cudacore",
+    sources = [
+        "c/cudacore/src/matrix_base.cu",
+        "c/cudacore/src/matrix_util.cu",
+        "c/cudacore/src/qp.cu",
+        "c/cudacore/src/cudacore_bind.cu"
+    ],
+    include_dirs = ["c/cudacore/include"],
+    extra_compile_args = {
+        'cxx': CXX_FLAGS,
+        'nvcc': NVCC_FLAGS
+    },
+    extra_link_args = CUDA_LD_FLAGS + ['-Wl,--no-as-needed', '-lcudart', '-lcublas', '-lcusolver']
+)
+
+if not USE_CUDA:
+    ext_modules = [core]
+    cmdclass = dict()
+else:
+    ext_modules = [core, cudacore]
     cmdclass = {'build_ext': BuildExtension}
-
 
 setup(
     name = "qptools",
-    version = "1.0.2", 
+    version = "1.0.3", 
     description = "Fast quadratic programming tools (with CUDA support)",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',

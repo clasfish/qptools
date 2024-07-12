@@ -1,6 +1,11 @@
 import numpy as np
-import qptools.cudacore as cudacore
-
+try:
+    import qptools.cudacore as cudacore
+except ModuleNotFoundError:
+    raise RuntimeError("This installation does not support CUDA")
+except Exception as e:
+    raise Exception(e)
+    
 class Handle:
     def __init__(self):
         self.cublas_handle = cudacore.CublasHandle()
